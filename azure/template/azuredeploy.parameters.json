@@ -1,0 +1,24 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "trafficManagerPrefix": {
+            "value": "ChaosTrafficManager"
+        },
+        "trafficManagerLocation": {
+            "value": "WestEurope"
+        },
+        "appServicePrefix": {
+            "value": "ChaosEngApp"
+        },
+        "appServicePlanPrefix": {
+            "value": "ChaosEngApp"
+        },
+        "regionALocation": {
+            "value": "WestEurope"
+        },
+        "regionBLocation": {
+            "value": "NorthEurope"
+        }
+    }
+}

@@ -1,0 +1,19 @@
+{
+    "name": "Azure-Chaos-Engineering",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "args": {
+            "TAG": "4.6.1-ubuntu-18.04"
+        }
+    },
+    "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash"
+    },
+    "extensions": [
+        "ms-vscode.powershell"
+    ],
+    "runArgs": [
+        "--env-file",
+        "devcontainer.env"
+    ],
+}

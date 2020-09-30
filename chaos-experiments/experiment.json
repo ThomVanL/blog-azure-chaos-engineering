@@ -1,0 +1,104 @@
+{
+    "version": "1.0.0",
+    "title": "What is the impact on our application chain when Region A's App Serivce goes offline?",
+    "description": "N/A",
+    "tags": [
+        "azure",
+        "traffic manager",
+        "app services"
+    ],
+    "configuration": {
+        "azure_subscription_id": {
+            "type": "env",
+            "key": "AZURE_SUBSCRIPTION_ID"
+        },
+        "region_a_resource_group": {
+            "type": "env",
+            "key": "REGION_A_RESOURCE_GROUP"
+        },
+        "region_a_app_service": {
+            "type": "env",
+            "key": "REGION_A_APP_SERVICE"
+        },
+        "traffic_manager_endpoint": {
+            "type": "env",
+            "key": "TRAFFIC_MANAGER_ENDPOINT"
+        }
+    },
+    "secrets": {
+        "azure": {
+            "client_id": {
+                "type": "env",
+                "key": "AZURE_CLIENT_ID"
+            },
+            "client_secret": {
+                "type": "env",
+                "key": "AZURE_CLIENT_SECRET"
+            },
+            "tenant_id": {
+                "type": "env",
+                "key": "AZURE_TENANT_ID"
+            },
+            "azure_cloud": "AZURE_PUBLIC_CLOUD"
+        }
+    },
+    "steady-state-hypothesis": {
+        "title": "Application responds",
+        "probes": [
+            {
+                "type": "probe",
+                "name": "we-can-request-website",
+                "tolerance": 200,
+                "provider": {
+                    "type": "http",
+                    "timeout": 3,
+                    "verify_tls": false,
+                    "url": "https://${traffic_manager_endpoint}"
+                }
+            }
+        ]
+    },
+    "method": [
+        {
+            "type": "action",
+            "name": "stop-app-service-region-a",
+            "provider": {
+                "type": "python",
+                "module": "chaosazure.webapp.actions",
+                "func": "stop_webapp",
+                "arguments": {
+                    "filter": "where resourceGroup=='${region_a_resource_group}' and name=='${region_a_app_service}'"
+                },
+                "secrets": [
+                    "azure"
+                ],
+                "config": [
+                    "azure_subscription_id"
+                ]
+            },
+            "pauses": {
+                "after": 20
+            }
+        }
+    ],
+    "rollbacks": [
+        {
+            "type": "action",
+            "name": "start-app-service-region-a",
+            "provider": {
+                "type": "python",
+                "module": "chaosazure.webapp.actions",
+                "func": "start_webapp",
+                "arguments": {
+                    "filter": "where resourceGroup=='${region_a_resource_group}' and name=='${region_a_app_service}'"
+                },
+                "secrets": [
+                    "azure"
+                ],
+                "config": [
+                    "azure_subscription_id"
+                ]
+            }
+        }
+    ]
+}

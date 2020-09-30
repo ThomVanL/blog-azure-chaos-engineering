@@ -1,0 +1,297 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "trafficManagerPrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Prefix of the traffic manager"
+            },
+            "defaultValue": "ChaosTrafficManager"
+        },
+        "trafficManagerLocation": {
+            "type": "string",
+            "metadata": {
+                "description": "Location for region Traffic Manager"
+            },
+            "defaultValue": "WestEurope"
+        },
+        "uniqueTrafficManagerDnsName": {
+            "type": "string",
+            "metadata": {
+                "description": "Relative DNS name for the traffic manager profile. Results in <uniqueDnsName>.trafficmanager.net, must be globally unique."
+            },
+            "defaultValue": "ChaosTrafficManager"
+        },
+        "appServicePrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Prefix for the Web Apps, must be globally unique. Results in <appServicePrefix>-<regionLocation>.azurewebsites.net"
+            },
+            "defaultValue": "ChaosEngApp"
+        },
+        "appServicePlanPrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Prefix for the App Service Plan. Results in <appServicePlanPrefix>-<regionLocation>-asp"
+            },
+            "defaultValue": "ChaosEngApp"
+        },
+        "regionALocation": {
+            "type": "string",
+            "metadata": {
+                "description": "Location for region A"
+            },
+            "defaultValue": "WestEurope"
+        },
+        "regionBLocation": {
+            "type": "string",
+            "metadata": {
+                "description": "Location for region B"
+            },
+            "defaultValue": "NorthEurope"
+        }
+    },
+    "variables": {
+        "uniqueSuffix": "[split(guid(subscription().subscriptionId),'-')[0]]",
+        "rgTrafficManagerName": "tvl-chaosengineering-tm-rg",
+        "rgAppAName": "tvl-chaosengineering-app-a-rg",
+        "rgAppBName": "tvl-chaosengineering-app-b-rg",
+        "trafficManagerName": "[concat(parameters('trafficManagerPrefix'), '-', variables('uniqueSuffix'))]",
+        "regionAAppServicePlanName": "[concat(parameters('appServicePlanPrefix'),'-',parameters('regionALocation'),'-asp')]",
+        "regionBAppServicePlanName": "[concat(parameters('appServicePlanPrefix'),'-',parameters('regionBLocation'),'-asp')]",
+        "regionAAppServiceName": "[concat(parameters('appServicePrefix'),'-',parameters('regionALocation'),'-',variables('uniqueSuffix'))]",
+        "regionBAppServiceName": "[concat(parameters('appServicePrefix'),'-',parameters('regionBLocation'),'-',variables('uniqueSuffix'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Resources/resourceGroups",
+            "apiVersion": "2018-05-01",
+            "location": "[parameters('trafficManagerLocation')]",
+            "name": "[variables('rgTrafficManagerName')]",
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.Resources/resourceGroups",
+            "apiVersion": "2018-05-01",
+            "location": "[parameters('regionALocation')]",
+            "name": "[variables('rgAppAName')]",
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.Resources/resourceGroups",
+            "apiVersion": "2018-05-01",
+            "location": "[parameters('regionBLocation')]",
+            "name": "[variables('rgAppBName')]",
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-10-01",
+            "resourceGroup": "[variables('rgTrafficManagerName')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Resources/resourceGroups/', variables('rgTrafficManagerName'))]"
+            ],
+            "name": "trafficManager",
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "resources": [
+                        {
+                            "apiVersion": "2018-08-01",
+                            "type": "Microsoft.Network/trafficManagerProfiles",
+                            "name": "[variables('trafficManagerName')]",
+                            "location": "global",
+                            "properties": {
+                                "profileStatus": "Enabled",
+                                "trafficRoutingMethod": "Priority",
+                                "dnsConfig": {
+                                    "relativeName": "[variables('trafficManagerName')]",
+                                    "ttl": 30
+                                },
+                                "monitorConfig": {
+                                    "protocol": "HTTPS",
+                                    "port": 443,
+                                    "path": "/"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-10-01",
+            "name": "regionA",
+            "resourceGroup": "[variables('rgAppAName')]",
+            "dependsOn": [
+                "trafficManager",
+                "[resourceId('Microsoft.Resources/resourceGroups/', variables('rgAppAName'))]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "resources": [
+                        {
+                            "apiVersion": "2019-08-01",
+                            "name": "[variables('regionAAppServicePlanName')]",
+                            "type": "Microsoft.Web/serverfarms",
+                            "location": "[parameters('regionALocation')]",
+                            "kind": "Linux",
+                            "sku": {
+                                "name": "S1",
+                                "tier": "Standard"
+                            }
+                        },
+                        {
+                            "apiVersion": "2019-08-01",
+                            "name": "[variables('regionAAppServiceName')]",
+                            "type": "Microsoft.Web/sites",
+                            "location": "[parameters('regionALocation')]",
+                            "dependsOn": [
+                                "[variables('regionAAppServicePlanName')]"
+                            ],
+                            "properties": {
+                                "serverFarmId": "[variables('regionAAppServicePlanName')]",
+                                "siteConfig": {
+                                    "appSettings": [
+                                        {
+                                            "name": "WEBSITE_RUN_FROM_PACKAGE",
+                                            "value": "https://github.com/ThomVanL/blog-azure-chaos-engineering/raw/master/azure/html/regionA/regiona.zip"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-10-01",
+            "name": "regionB",
+            "resourceGroup": "[variables('rgAppBName')]",
+            "dependsOn": [
+                "trafficManager",
+                "[resourceId('Microsoft.Resources/resourceGroups/', variables('rgAppBName'))]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "resources": [
+                        {
+                            "apiVersion": "2019-08-01",
+                            "name": "[variables('regionBAppServicePlanName')]",
+                            "type": "Microsoft.Web/serverfarms",
+                            "location": "[parameters('regionBLocation')]",
+                            "kind": "Linux",
+                            "sku": {
+                                "name": "S1",
+                                "tier": "Standard"
+                            }
+                        },
+                        {
+                            "apiVersion": "2019-08-01",
+                            "name": "[variables('regionBAppServiceName')]",
+                            "type": "Microsoft.Web/sites",
+                            "location": "[parameters('regionBLocation')]",
+                            "dependsOn": [
+                                "[variables('regionBAppServicePlanName')]"
+                            ],
+                            "properties": {
+                                "serverFarmId": "[variables('regionBAppServicePlanName')]",
+                                "siteConfig": {
+                                    "appSettings": [
+                                        {
+                                            "name": "WEBSITE_RUN_FROM_PACKAGE",
+                                            "value": "https://github.com/ThomVanL/blog-azure-chaos-engineering/raw/master/azure/html/regionB/regionb.zip"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2019-10-01",
+            "resourceGroup": "[variables('rgTrafficManagerName')]",
+            "name": "trafficManagerEndpoints",
+            "dependsOn": [
+                "trafficManager",
+                "regionA",
+                "regionB",
+                "[resourceId('Microsoft.Resources/resourceGroups/', variables('rgTrafficManagerName'))]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "resources": [
+                        {
+                            "apiVersion": "2018-08-01",
+                            "type": "Microsoft.Network/trafficManagerProfiles/azureEndpoints",
+                            "location": "global",
+                            "name": "[concat(variables('trafficManagerName'),'/',variables('regionAAppServiceName'))]",
+                            "properties": {
+                                "targetResourceId": "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/',variables('rgAppAName'),'/providers/Microsoft.Web/sites/',variables('regionAAppServiceName'))]",
+                                "endpointStatus": "Enabled"
+                            }
+                        },
+                        {
+                            "apiVersion": "2018-08-01",
+                            "type": "Microsoft.Network/trafficManagerProfiles/azureEndpoints",
+                            "location": "global",
+                            "name": "[concat(variables('trafficManagerName'),'/',variables('regionBAppServiceName'))]",
+                            "properties": {
+                                "targetResourceId": "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/',variables('rgAppBName'),'/providers/Microsoft.Web/sites/',variables('regionBAppServiceName'))]",
+                                "endpointStatus": "Enabled"
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "tenantId": {
+            "type": "string",
+            "value": "[subscription().tenantId]"
+        },
+        "subscriptionId": {
+            "type": "string",
+            "value": "[subscription().subscriptionId]"
+        },
+        "rgAppAName": {
+            "type": "string",
+            "value": "[variables('rgAppAName')]"
+        },
+        "rgAppBName": {
+            "type": "string",
+            "value": "[variables('rgAppBName')]"
+        },
+        "trafficManagerFqdn": {
+            "type": "string",
+            "value": "[concat(variables('trafficManagerName'),'.trafficmanager.net')]"
+        },
+        "regionAAppServiceName": {
+            "type": "string",
+            "value": "[variables('regionAAppServiceName')]"
+        },
+        "regionBAppServiceName": {
+            "type": "string",
+            "value": "[variables('regionBAppServiceName')]"
+        }
+    }
+}

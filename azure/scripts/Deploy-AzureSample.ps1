@@ -12,7 +12,7 @@
 param (
 )
 
-###Requires -Modules @{ ModuleName="Az"; ModuleVersion="4.6.1" }
+#Requires -Modules @{ ModuleName="Az"; ModuleVersion="4.6.1" }
 #Requires -Version 7
 
 if (!(Get-AzContext)) {

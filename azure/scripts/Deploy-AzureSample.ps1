@@ -35,6 +35,8 @@ if ($context) {
         Write-Warning -Message "No ARM template outputs found."
     }
 
+    $deployment | Format-List
+
     Write-Host -ForegroundColor Yellow "👉 Creating Azure AD Service Principal.."
     $newSp = New-AzADServicePrincipal -Scope "/subscriptions/$($context.Subscription.Id)" -Role "Contributor" -DisplayName "thomasvanlaere.com-Blog-Azure-Chaos-Engineering" -ErrorVariable newSpError
     if (!$newSpError) {

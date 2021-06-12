@@ -39,10 +39,6 @@ ENV VIRTUAL_ENV="/home/${USERNAME}/.venvs/chaostk"
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 RUN python3 -m venv $VIRTUAL_ENV
-RUN bin/bash -c "source $VIRTUAL_ENV/bin/activate && pip3 install --no-cache-dir -U 'chaostoolkit==1.6.0' 'chaostoolkit-reporting==0.13.0' 'chaostoolkit-azure==0.8.3'"
-
-# Temporary fix until https://github.com/chaostoolkit-incubator/chaostoolkit-azure/pull/119 is merged.
-RUN git clone -b webapp_init_client_mangement https://github.com/ThomVanL/chaostoolkit-azure.git
-RUN rm -rf $VIRTUAL_ENV/lib/python3.6/site-packages/chaosazure && \
-    mv chaostoolkit-azure/chaosazure $VIRTUAL_ENV/lib/python3.6/site-packages && \
-    rm -rf  chaostoolkit-azure
+RUN bin/bash -c "source $VIRTUAL_ENV/bin/activate && \
+    pip3 install --upgrade pip && \
+    pip3 install --no-cache-dir -U 'chaostoolkit==1.9.1' 'chaostoolkit-reporting==0.13.0' 'chaostoolkit-azure==0.10.0'"

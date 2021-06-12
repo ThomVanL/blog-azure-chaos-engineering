@@ -114,7 +114,10 @@
                                 "monitorConfig": {
                                     "protocol": "HTTPS",
                                     "port": 443,
-                                    "path": "/"
+                                    "path": "/",
+                                    "intervalInSeconds": 10,
+                                    "timeoutInSeconds": 5,
+                                    "toleratedNumberOfFailures": 3
                                 }
                             }
                         }
@@ -292,6 +295,14 @@
         "regionBAppServiceName": {
             "type": "string",
             "value": "[variables('regionBAppServiceName')]"
+        },
+        "regionAAppServiceUrl": {
+            "type": "string",
+            "value": "[concat(variables('regionAAppServiceName'),'.azurewebsites.net')]"
+        },
+        "regionBAppServiceUrl": {
+            "type": "string",
+            "value": "[concat(variables('regionBAppServiceName'),'.azurewebsites.net')]"
         }
     }
 }
